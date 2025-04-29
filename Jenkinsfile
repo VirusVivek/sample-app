@@ -1,38 +1,40 @@
 pipeline {
-    agent any
+    agent none
 
     stages {
-        stage('Checkout') {
+        stage('Build and Test') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
             steps {
                 checkout scm
-            }
-        }
-        
-        stage('Install Dependencies') {
-            steps {
                 sh 'npm install'
-            }
-        }
-        
-        stage('Run Tests') {
-            steps {
                 sh 'npm test'
             }
         }
         
         stage('Build Docker Image') {
+            agent any
             steps {
-                sh 'docker build -t sample-app:${BUILD_NUMBER} .'
+                script {
+                    sh 'docker build -t sample-app:${BUILD_NUMBER} .'
+                }
             }
         }
         
         stage('Deploy') {
+            agent any
             steps {
-                sh '''
-                docker stop sample-app || true
-                docker rm sample-app || true
-                docker run -d -p 3000:3000 --name sample-app sample-app:${BUILD_NUMBER}
-                '''
+                script {
+                    sh '''
+                    docker stop sample-app || true
+                    docker rm sample-app || true
+                    docker run -d -p 3000:3000 --name sample-app sample-app:${BUILD_NUMBER}
+                    '''
+                }
             }
         }
     }
